@@ -1,0 +1,15 @@
+#!/bin/bash
+CUR_DIR=$(cd `dirname ${BASH_SOURCE[0]}`; pwd)
+LOG_DIR=/var/log/monitor
+
+
+while (true)
+do
+    NOW=(`date +%Y\ %m\ %d\ %H\ %M\ %S`)
+    LOG_DIR_1=$LOG_DIR/${NOW[0]}
+    FNAME="$LOG_DIR_1/${NOW[1]}${NOW[2]}.txt"
+    mkdir -p $LOG_DIR_1
+    STAT=`${CUR_DIR}/stat.sh`
+    echo "${NOW[3]}:${NOW[4]}:${NOW[5]}, $STAT" >> $FNAME
+    sleep 10
+done
