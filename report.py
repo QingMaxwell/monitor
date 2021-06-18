@@ -102,6 +102,12 @@ def parse_eth(eth, time_diff):
     
 def parse_disk(disk):
     if len(disk.shape) == 1:
+        # [list(
+        #     ['sda', '211587.65', '193324.32', '42',
+        #      'sdb', '53649.82',  '49159.93',  '43'...]),
+        #  list([...]),
+        #  ...
+        # ]
         disk_new = []
         # find all disks
         res = set()
@@ -115,7 +121,10 @@ def parse_disk(disk):
             record = []
             for r in res_list:
                 if r in d:
-                    record.append(d[d.index(r):d.index(r)+4])
+                    tmp = d[d.index(r):d.index(r)+4]
+                    if len(tmp) == 4 and tmp[3][0].isalpha():
+                        tmp[3] = 'nan'
+                    record.append(tmp)
                 else:
                     record.append([r,0,0,0])
             disk_new.append(record)
@@ -125,16 +134,17 @@ def parse_disk(disk):
                 
     
     disks = disk.reshape(disk.shape[0], -1, 4).transpose(1,2,0)
+    
     result = []
     for i,e in enumerate(disks):
         name = e[0][0]
         data_r = np.float32(e[1])
         data_w = np.float32(e[2])
-        e[3][e[3]=='S.M.A.R.T.notavailable'] = '0'
+        e[3][e[3]=='S.M.A.R.T.notavailable'] = 'nan'
         temp = np.float32(e[3])
         result.append({'idx':i, 'name':name+' R (KB/s)', 'data':data_r})
         result.append({'idx':i, 'name':name+' W (KB/s)', 'data':data_w})
-        result.append({'idx':i, 'name':name+' T (°C)', 'data':temp})
+        result.append({'idx':i, 'name':name+' T (°C)', 'data':temp, 'twinx':1, 'min':0, 'max':70, 'tick':70})
     return result
 
 def parse_partition(data):
@@ -177,7 +187,7 @@ def parse_partition(data):
             data_percent.append(int(y))
             
         result.append({'idx':i, 'name':name+" used (GB)", 'data':used})
-        result.append({'idx':i, 'name':name+" use (%)", 'data':data_percent})
+        result.append({'idx':i, 'name':name+" use (%)", 'data':data_percent, 'twinx':1, 'min':0, 'max':100, 'tick':100})
         
     return result
 
@@ -301,6 +311,10 @@ def draw(dt, plots_cfg, file_name, max_cols):
         
         #ax.set_title(cfg['name'])
         
+        if 'twinx' in cfg:
+            ax2 = ax.twinx()
+            ax = ax2
+        
         if 'min' in cfg and 'max' in cfg:
             ax.set_ylim(cfg['min'],cfg['max'])
             if 'tick' in cfg:
@@ -314,11 +328,11 @@ def draw(dt, plots_cfg, file_name, max_cols):
         ax.plot(dt, cfg['data'], c=cfg['color'], label=cfg['name'])
         
         # show max value
-        max_pos = np.argmax(cfg['data'])
+        max_pos = np.nanargmax(cfg['data'])
         max_val = cfg['data'][max_pos]
         max_time = dt[max_pos]
         
-        avg_val = np.average(cfg['data'])
+        avg_val = np.nanmean(cfg['data'])
         msg_full = '{:<16s} max: {:>8.2f} @ {} avg: {:>8.2f}'.format(cfg['name'], max_val, str(max_time), avg_val)
         print(msg_full)
         msg = str(max_val)
