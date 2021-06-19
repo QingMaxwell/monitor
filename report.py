@@ -76,7 +76,7 @@ def parse_eth(eth, time_diff):
             record = []
             for r in res_list:
                 if r in d:
-                    record.append(d[d.index(r):d.index(r)+6])
+                    record.append(d[d.index(r):d.index(r)+3])
                 else:
                     record.append([r,0,0])
             data_new.append(record)
@@ -357,7 +357,10 @@ def draw(dt, plots_cfg, file_name, max_cols):
             fig.delaxes(axs[last_row, c])
     
     #plt.show()
-    plt.savefig(file_name)
+    try:
+        plt.savefig(file_name)
+    except:
+        print("save report to {} failed".format(file_name))
     
     
 def report(file_name):
