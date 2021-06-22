@@ -60,7 +60,7 @@ def parse_mem(mem):
     
     return [{'idx':0, 'name':'MEM Used (MB)',   'data':mem_used,  'min':0, 'max':mem_total+1, 'tick':int(mem_total/1000)*100},
             {'idx':0, 'name':'MEM Cached (MB)', 'data':mem_cache, 'min':0, 'max':mem_total+1, 'tick':int(mem_total/1000)*100},
-            {'idx':1, 'name':'SWAP (MB)',       'data':swap_used, 'min':0, 'max':swap_total+1, 'tick':int(swap_total/1000)*100}]
+            {'idx':1, 'name':'SWAP (MB)',       'data':swap_used, 'min':0, 'max':swap_total+1, 'tick':max(int(swap_total/1000)*100, 100)}]
 
 def parse_eth(eth, time_diff):
     if len(eth.shape) == 1:
@@ -124,6 +124,8 @@ def parse_disk(disk):
                     tmp = d[d.index(r):d.index(r)+4]
                     if len(tmp) == 4 and tmp[3][0].isalpha():
                         tmp[3] = 'nan'
+                    if len(tmp) == 3:
+                        tmp.append('nan')
                     record.append(tmp)
                 else:
                     record.append([r,0,0,0])
@@ -132,7 +134,6 @@ def parse_disk(disk):
         
         disk = disk_new
                 
-    
     disks = disk.reshape(disk.shape[0], -1, 4).transpose(1,2,0)
     
     result = []
