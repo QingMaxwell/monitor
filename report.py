@@ -22,6 +22,7 @@ def parse_time(raw):
     return dt, diff(time_sec)
 
 def parse_cpu(cpu):
+    cpu=np.array(cpu)
     subsample = 20
     cpu_raw=np.int64(cpu[::subsample,0:7])
     cpu_raw_diff=diff(cpu_raw)
@@ -51,6 +52,7 @@ def parse_cpu(cpu):
             {'idx':2, 'name':'CPU Freq (Hz)',  'data':cpu_freq,      'avg':'b'}]
 
 def parse_mem(mem):
+    mem=np.array(mem)
     mem_total=np.uint32(mem[0,0])
     mem_cache=np.uint32(mem[:,4])
     mem_avai=np.uint32(mem[:,5])
@@ -63,7 +65,8 @@ def parse_mem(mem):
             {'idx':1, 'name':'SWAP (MB)',       'data':swap_used, 'min':0, 'max':swap_total+1, 'tick':max(int(swap_total/1000)*100, 100)}]
 
 def parse_eth(eth, time_diff):
-    if len(eth.shape) == 1:
+    #if len(eth.shape) == 1:
+    if True:
         data_new = []
         # find all eths
         res = set()
@@ -101,7 +104,10 @@ def parse_eth(eth, time_diff):
     return result
     
 def parse_disk(disk):
-    if len(disk.shape) == 1:
+    #disk = disk.tolist()
+
+    #if len(disk.shape) == 1:
+    if True:
         # [list(
         #     ['sda', '211587.65', '193324.32', '42',
         #      'sdb', '53649.82',  '49159.93',  '43'...]),
@@ -133,7 +139,7 @@ def parse_disk(disk):
         disk_new = np.array(disk_new)
         
         disk = disk_new
-                
+
     disks = disk.reshape(disk.shape[0], -1, 4).transpose(1,2,0)
     
     result = []
@@ -149,7 +155,8 @@ def parse_disk(disk):
     return result
 
 def parse_partition(data):
-    if len(data.shape) == 1:
+    #if len(data.shape) == 1:
+    if True:
         data_new = []
         # find all disks
         res = set()
@@ -329,12 +336,17 @@ def draw(dt, plots_cfg, file_name, max_cols):
         ax.plot(dt, cfg['data'], c=cfg['color'], label=cfg['name'])
         
         # show max value
-        max_pos = np.nanargmax(cfg['data'])
-        max_val = cfg['data'][max_pos]
-        max_time = dt[max_pos]
-        
-        avg_val = np.nanmean(cfg['data'])
-        msg_full = '{:<16s} max: {:>8.2f} @ {} avg: {:>8.2f}'.format(cfg['name'], max_val, str(max_time), avg_val)
+        if np.isnan(cfg['data']).all():
+            max_pos = 0
+            max_val = np.NaN
+            max_time = np.NaN
+            avg_val = np.NaN
+        else:
+            max_pos = np.nanargmax(cfg['data'])
+            max_val = cfg['data'][max_pos]
+            max_time = dt[max_pos]
+            avg_val = np.nanmean(cfg['data'])
+        msg_full = '{:<19s} max: {:>9.2f} @ {:<19} avg: {:>9.2f}'.format(cfg['name'], max_val, str(max_time), avg_val)
         print(msg_full)
         msg = str(max_val)
         msg_x = dt[max_pos]
@@ -381,11 +393,11 @@ def report(file_name):
     
     # parse data
     #dt, time_diff = parse_time(logdata[:,0])
-    cpu_datas  = parse_cpu(np.array(list(np.char.split(logdata[:,1]))))
-    mem_datas  = parse_mem(np.array(list(np.char.split(logdata[:,2]))))
-    eths_datas = parse_eth(np.array(list(np.char.split(logdata[:,3]))), time_diff)
-    disk_datas = parse_disk(np.array(list(np.char.split(logdata[:,4]))))
-    partition_datas = parse_partition(np.array(list(np.char.split(logdata[:,5]))))
+    cpu_datas  = parse_cpu(np.char.split(logdata[:,1]).tolist())
+    mem_datas  = parse_mem(np.char.split(logdata[:,2]).tolist())
+    eths_datas = parse_eth(np.char.split(logdata[:,3]).tolist(), time_diff)
+    disk_datas = parse_disk(np.char.split(logdata[:,4]).tolist())
+    partition_datas = parse_partition(np.char.split(logdata[:,5]).tolist())
     
     # add to plot
     basic_plots = []
