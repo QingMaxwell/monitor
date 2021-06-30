@@ -22,9 +22,13 @@ def parse_time(raw):
     return dt, diff(time_sec)
 
 def parse_cpu(cpu):
+    # abnormal value
+    for i in range(len(cpu)):
+        if len(cpu[i]) != 10:
+            cpu[i] = np.full((10,),'nan')
     cpu=np.array(cpu)
     subsample = 20
-    cpu_raw=np.int64(cpu[::subsample,0:7])
+    cpu_raw=np.float32(cpu[::subsample,0:7])
     cpu_raw_diff=diff(cpu_raw)
     cpu_user=np.float32(cpu_raw_diff[:,0])
     cpu_nice=np.float32(cpu_raw_diff[:,1])
@@ -47,22 +51,22 @@ def parse_cpu(cpu):
     cpu_temp=np.float32(cpu[:,9])
     
     return [{'idx':0, 'name':'CPU Temp (°C)',  'data':cpu_temp,      'avg':'b'},
-            {'idx':1, 'name':'CPU Usage1 (%)', 'data':cpu_usage,                'min':0, 'max':110,  'tick':10},
-            {'idx':1, 'name':'CPU Usage2 (%)', 'data':cpu_usage_raw, 'avg':'b', 'min':0, 'max':110,  'tick':10},
+            {'idx':1, 'name':'CPU Usage1 (%)', 'data':cpu_usage,                'min':0, 'max':105,  'tick':10},
+            {'idx':1, 'name':'CPU Usage2 (%)', 'data':cpu_usage_raw, 'avg':'b', 'min':0, 'max':105,  'tick':10},
             {'idx':2, 'name':'CPU Freq (Hz)',  'data':cpu_freq,      'avg':'b'}]
 
 def parse_mem(mem):
     mem=np.array(mem)
-    mem_total=np.uint32(mem[0,0])
-    mem_cache=np.uint32(mem[:,4])
-    mem_avai=np.uint32(mem[:,5])
+    mem_total=np.float32(mem[0,0])
+    mem_cache=np.float32(mem[:,4])
+    mem_avai=np.float32(mem[:,5])
     mem_used=(mem_total-mem_avai)
-    swap_used=np.uint32(mem[:,7])
-    swap_total=np.uint32(mem[0,6])
+    swap_used=np.float32(mem[:,7])
+    swap_total=np.float32(mem[0,6])
     
-    return [{'idx':0, 'name':'MEM Used (MB)',   'data':mem_used,  'min':0, 'max':mem_total+1, 'tick':int(mem_total/1000)*100},
-            {'idx':0, 'name':'MEM Cached (MB)', 'data':mem_cache, 'min':0, 'max':mem_total+1, 'tick':int(mem_total/1000)*100},
-            {'idx':1, 'name':'SWAP (MB)',       'data':swap_used, 'min':0, 'max':swap_total+1, 'tick':max(int(swap_total/1000)*100, 100)}]
+    return [{'idx':0, 'name':'MEM Used (MB)',   'data':mem_used,  'min':0, 'max':int(mem_total+1), 'tick':int(mem_total/1000)*100},
+            {'idx':0, 'name':'MEM Cached (MB)', 'data':mem_cache, 'min':0, 'max':int(mem_total+1), 'tick':int(mem_total/1000)*100},
+            {'idx':1, 'name':'SWAP (MB)',       'data':swap_used, 'min':0, 'max':int(swap_total+1), 'tick':max(int(swap_total/1000)*100, 100)}]
 
 def parse_eth(eth, time_diff):
     #if len(eth.shape) == 1:
@@ -81,7 +85,7 @@ def parse_eth(eth, time_diff):
                 if r in d:
                     record.append(d[d.index(r):d.index(r)+3])
                 else:
-                    record.append([r,0,0])
+                    record.append([r,'nan','nan'])
             data_new.append(record)
         data_new = np.array(data_new)
         eth = data_new
@@ -90,9 +94,9 @@ def parse_eth(eth, time_diff):
     result = []
     for i,e in enumerate(eths):
         name = e[0][0]
-        data_r = np.int64(e[1])
+        data_r = np.float64(e[1])
         data_r_diff = diff(data_r)
-        data_w = np.int64(e[2])
+        data_w = np.float64(e[2])
         data_w_diff = diff(data_w)
         zero_point = np.where(np.logical_or(data_r_diff <= 0, data_w_diff <= 0))
         data_r_diff[zero_point] = 0
@@ -134,7 +138,7 @@ def parse_disk(disk):
                         tmp.append('nan')
                     record.append(tmp)
                 else:
-                    record.append([r,0,0,0])
+                    record.append([r,'nan','nan','nan'])
             disk_new.append(record)
         disk_new = np.array(disk_new)
         
@@ -171,7 +175,7 @@ def parse_partition(data):
                 if r in d:
                     record.append(d[d.index(r):d.index(r)+6])
                 else:
-                    record.append([r,0,0,0,0,0])
+                    record.append([r,'nan','nan','nan','nan','nan'])
             data_new.append(record)
         data_new = np.array(data_new)
         data = data_new
@@ -185,17 +189,17 @@ def parse_partition(data):
         size = []
         for x in e[3]:
             y = x.replace("G","")
-            used.append(int(y))
+            used.append(float(y))
         for x in e[2]:
             y = x.replace("G","")
-            size.append(int(y)/1024)
+            size.append(float(y)/1024)
         maxsize = np.max(size)
         for x in e[5]:
             y = x.replace("%","")
-            data_percent.append(int(y))
+            data_percent.append(float(y))
             
         result.append({'idx':i, 'name':name+" used (GB)", 'data':used})
-        result.append({'idx':i, 'name':name+" use (%)", 'data':data_percent, 'twinx':1, 'min':0, 'max':100, 'tick':100})
+        result.append({'idx':i, 'name':name+" use (%)", 'data':data_percent, 'twinx':1, 'min':0, 'max':105, 'tick':100})
         
     return result
 
@@ -296,8 +300,10 @@ def get_logdata(start_time, end_time):
             # start_time ---- insert_1 ---------------------------- insert_2 ---- end_time
             #     |<---- 10s ---->|                                    |<---- 10s ---->|
             
-            dummy_cpu = str(np.zeros(10,dtype=np.int32))[1:-1]
-            dummy_mem = str(np.zeros(9,dtype=np.int32))[1:-1]
+            #dummy_cpu = str(np.zeros(10,dtype=np.int32))[1:-1]
+            #dummy_mem = str(np.zeros(9,dtype=np.int32))[1:-1]
+            dummy_cpu = str(np.full((10),np.NaN))[1:-1]
+            dummy_mem = str(np.full((9),np.NaN))[1:-1]
             insert_datas = np.array([
                 [insert_1_time.strftime("%H:%M:%S"), dummy_cpu, dummy_mem, '', '', ''],
                 [insert_2_time.strftime("%H:%M:%S"), dummy_cpu, dummy_mem, '', '', '']], dtype=str)
